@@ -197,7 +197,7 @@ it('pulls changes since a timestamp for mobile offline hydration', function () {
         ->and(count($data['debts']))->toBe(1);
 
     // Subsequent pull with future 'since' returns empty lists
-    $futureSince = now()->addHour()->toIso8601String();
+    $futureSince = urlencode(now()->addHour()->toIso8601String());
     $futureResponse = $this->getJson("/api/v1/sync/pull?workspace_id={$workspace->id}&since={$futureSince}");
     $futureResponse->assertOk();
 

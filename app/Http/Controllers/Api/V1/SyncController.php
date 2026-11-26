@@ -19,6 +19,7 @@ use App\Models\SyncMutation;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class SyncController extends Controller
@@ -168,40 +169,49 @@ final class SyncController extends Controller
             abort(403, 'No autorizado para acceder a este workspace.');
         }
 
-        $since = $validated['since'] ?? null;
+        $sinceTimestamp = null;
+        if (! empty($validated['since'])) {
+            try {
+                $rawSince = (string) $validated['since'];
+                $sanitized = str_contains($rawSince, ' ') ? str_replace(' ', '+', $rawSince) : $rawSince;
+                $sinceTimestamp = Carbon::parse($sanitized)->toDateTimeString();
+            } catch (\Throwable) {
+                $sinceTimestamp = null;
+            }
+        }
 
         $accounts = Account::query()
             ->where('workspace_id', $workspace->id)
-            ->when($since, fn ($query) => $query->where('updated_at', '>=', $since))
+            ->when($sinceTimestamp, fn ($query) => $query->where('updated_at', '>=', $sinceTimestamp))
             ->get();
 
         $periods = BudgetPeriod::query()
             ->where('workspace_id', $workspace->id)
-            ->when($since, fn ($query) => $query->where('updated_at', '>=', $since))
+            ->when($sinceTimestamp, fn ($query) => $query->where('updated_at', '>=', $sinceTimestamp))
             ->get();
 
         $buckets = BudgetBucket::query()
             ->where('workspace_id', $workspace->id)
-            ->when($since, fn ($query) => $query->where('updated_at', '>=', $since))
+            ->when($sinceTimestamp, fn ($query) => $query->where('updated_at', '>=', $sinceTimestamp))
             ->get();
 
         $items = BudgetItem::query()
             ->where('workspace_id', $workspace->id)
-            ->when($since, fn ($query) => $query->where('updated_at', '>=', $since))
+            ->when($sinceTimestamp, fn ($query) => $query->where('updated_at', '>=', $sinceTimestamp))
             ->get();
 
         $debts = Debt::query()
             ->where('workspace_id', $workspace->id)
-            ->when($since, fn ($query) => $query->where('updated_at', '>=', $since))
+            ->when($sinceTimestamp, fn ($query) => $query->where('updated_at', '>=', $sinceTimestamp))
             ->get();
 
         $transactions = FinancialTransaction::query()
             ->where('workspace_id', $workspace->id)
-            ->when($since, fn ($query) => $query->where('updated_at', '>=', $since))
+            ->when($sinceTimestamp, fn ($query) => $query->where('updated_at', '>=', $sinceTimestamp))
             ->get();
 
         $rates = CurrencyRate::query()
-            ->when($since, fn ($query) => $query->where('updated_at', '>=', $since))
+            ->when($sinceTimestamp, fn ($query) => $query->where('updated_at', '>=', $sinceTimestamp))
             ->get();
 
         return ApiResponse::success(

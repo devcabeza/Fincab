@@ -12,6 +12,7 @@ use App\Models\FinancialTransaction;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 it('creates the shared finance persistence tables', function () {
@@ -205,25 +206,25 @@ it('rejects finance records that connect different workspaces', function () {
         'occurred_at' => '2026-09-15 12:00:00',
     ];
 
-    expect(fn () => FinancialTransaction::query()->create([
+    expect(fn () => DB::transaction(fn () => FinancialTransaction::query()->create([
         ...$transactionAttributes,
         'account_id' => $businessAccount->id,
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
-    expect(fn () => FinancialTransaction::query()->create([
+    expect(fn () => DB::transaction(fn () => FinancialTransaction::query()->create([
         ...$transactionAttributes,
         'counter_account_id' => $businessAccount->id,
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
-    expect(fn () => FinancialTransaction::query()->create([
+    expect(fn () => DB::transaction(fn () => FinancialTransaction::query()->create([
         ...$transactionAttributes,
         'debt_id' => $businessDebt->id,
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
-    expect(fn () => FinancialTransaction::query()->create([
+    expect(fn () => DB::transaction(fn () => FinancialTransaction::query()->create([
         ...$transactionAttributes,
         'budget_item_id' => $businessItem->id,
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
     $businessTransaction = FinancialTransaction::query()->create([
         'workspace_id' => $business->id,
@@ -239,7 +240,7 @@ it('rejects finance records that connect different workspaces', function () {
         'occurred_at' => '2026-09-15 12:00:00',
     ]);
 
-    expect(fn () => DebtPayment::query()->create([
+    expect(fn () => DB::transaction(fn () => DebtPayment::query()->create([
         'debt_id' => $personalDebt->id,
         'financial_transaction_id' => $businessTransaction->id,
         'currency_code' => 'USD',
@@ -249,6 +250,6 @@ it('rejects finance records that connect different workspaces', function () {
         'principal_amount_usd' => '10',
         'interest_amount_usd' => '0',
         'fees_amount_usd' => '0',
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
 });
