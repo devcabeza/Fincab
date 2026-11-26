@@ -6,8 +6,8 @@
     <header class="border-b border-zinc-800/80 bg-zinc-900/80 backdrop-blur-xl sticky top-0 z-30 pt-safe">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <img src="{{ asset('favicon.svg') }}" alt="Laravertex" class="w-8 h-8 select-none">
-                <span class="font-bold text-lg tracking-tight text-white select-none">Laravertex</span>
+                <img src="{{ asset('favicon.svg') }}" alt="Fincab" class="w-8 h-8 select-none">
+                <span class="font-bold text-lg tracking-tight text-white select-none">Fincab</span>
             </div>
 
             {{-- User Avatar Dropdown --}}
@@ -69,24 +69,35 @@
     {{-- Main Content Container --}}
     <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-8 space-y-6 sm:space-y-8">
         {{-- Welcome Banner --}}
-        <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-900/40 via-zinc-900 to-zinc-950 border border-indigo-500/20 p-5 sm:p-10 shadow-2xl">
+        <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-zinc-900 border border-zinc-800 p-5 sm:p-8 shadow-2xl">
             <div class="relative z-10 space-y-3 max-w-2xl">
-                <x-badge variant="neutral" size="sm" class="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 uppercase tracking-wider font-semibold py-1 px-3 max-w-full whitespace-normal h-auto">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-                    <span>Sesión iniciada vía Magic Link</span>
-                </x-badge>
+                <div class="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                    <span>Sesión activa vía Magic Link</span>
+                </div>
                 <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
                     ¡Hola, {{ $user->name }}!
                 </h2>
-                <p class="text-zinc-300 text-sm sm:text-base md:text-lg leading-relaxed select-text">
-                    Te has autenticado correctamente sin contraseñas. Tu cuenta está activa y verificada con el correo <strong class="text-white break-all">{{ $user->email }}</strong>.
+                <p class="text-zinc-300 text-sm sm:text-base leading-relaxed select-text">
+                    Te has autenticado correctamente sin contraseñas. Tu cuenta está verificada con el correo <strong class="text-white break-all">{{ $user->email }}</strong>.
                 </p>
+                <div class="pt-2 flex flex-wrap gap-2.5">
+                    <x-button href="{{ route('budget.sheet') }}" variant="primary" size="sm" class="min-h-[44px]">
+                        <span>Hoja Presupuestaria</span>
+                    </x-button>
+                    <x-button href="{{ route('budget.debts') }}" variant="neutral" size="sm" class="bg-zinc-800 text-white hover:bg-zinc-700 min-h-[44px]">
+                        <span>Centro de Deudas</span>
+                    </x-button>
+                    <x-button href="{{ route('budget.accounts') }}" variant="neutral" size="sm" class="bg-zinc-800 text-white hover:bg-zinc-700 min-h-[44px]">
+                        <span>Cuentas y Tasas</span>
+                    </x-button>
+                </div>
             </div>
         </div>
 
         {{-- Bento Grid Features --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            {{-- Mobile & Capacitor Card --}}
+            {{-- NativePHP Mobile Card --}}
             <x-card>
                 <div class="space-y-3">
                     <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
@@ -94,23 +105,22 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
                         </svg>
                     </div>
-                    <h3 class="text-lg font-bold text-white">Capacitor Mobile APK</h3>
+                    <h3 class="text-lg font-bold text-white">NativePHP Mobile</h3>
                     <p class="text-sm text-zinc-400">
-                        Optimizado para WebViews Android e iOS con Safe Areas, zonas de pulgar y feedback táctil de 60fps.
+                        Ejecuta la aplicación Laravel en dispositivos Android e iOS con NativePHP for Mobile.
                     </p>
                 </div>
 
                 <x-slot:actions class="w-full">
                     <x-button
-                        href="https://github.com/devcabeza/starter-kit/releases/latest/download/app-debug.apk"
+                        href="https://nativephp.com/docs/mobile/4/getting-started/quick-start"
                         variant="neutral"
                         class="w-full min-h-[48px] bg-zinc-800 hover:bg-zinc-700 text-white"
-                        download="Laravertex.apk"
                     >
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
-                        <span>Descargar APK</span>
+                        <span>Guía de NativePHP</span>
                     </x-button>
                 </x-slot:actions>
             </x-card>

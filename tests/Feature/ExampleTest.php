@@ -1,18 +1,20 @@
 <?php
 
-test('returns a successful response', function () {
+declare(strict_types=1);
+
+test('health endpoint returns successful status', function () {
     $response = $this->get('/health');
 
     $response->assertOk();
 });
 
-test('welcome page renders successfully with starter kit landing content', function () {
+test('welcome page renders successfully with Fincab product landing content', function () {
     $response = $this->get('/');
 
     $response->assertOk();
-    $response->assertSee('Laravertex');
-    $response->assertSee('Web y APK Nativo');
-    $response->assertSee('Capacitor 7');
-    $response->assertSee('https://github.com/devcabeza/starter-kit');
-    $response->assertSee('Ver en GitHub');
+    $response->assertSee('Fincab');
+    $response->assertSee('Control presupuestario quincenal');
+    $response->assertSee('Pay Debt First');
+    $response->assertSee('Termómetro de Deudas');
+    $response->assertSee('Comenzar Ahora con Magic Link');
 });

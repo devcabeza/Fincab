@@ -1,5 +1,4 @@
 .PHONY: help up down restart status logs
-.PHONY: capacitor-icons capacitor-sync capacitor-open-android
 .PHONY: artisan composer npm node
 .PHONY: migrate migrate-fresh migrate-rollback seed db-wipe
 .PHONY: test test-coverage pest pest-filter pest-parallel
@@ -443,20 +442,13 @@ horizon-link: ## Show Horizon URL
 	@echo "📊 Horizon dashboard: http://localhost:8000/horizon"
 
 # ============================================================================
-# CAPACITOR (Mobile App)
+# NATIVEPHP MOBILE
 # ============================================================================
 
-.PHONY: capacitor-icons capacitor-sync capacitor-open-android capacitor-build
+.PHONY: native-install native-run
 
-capacitor-icons: ## Generate mobile icons from public/mobile-icons/logo.png
-	@./scripts/generate-mobile-icons.sh
-	@echo "Run 'make capacitor-sync' to apply changes"
+native-install: ## Install NativePHP resources for Android
+	$(SAIL) php artisan native:install android
 
-capacitor-sync: ## Sync Capacitor with web assets and icons
-	npm run cap:sync
-
-capacitor-build: ## Build Android APK with branding assets
-	npm run build:android
-
-capacitor-open-android: ## Open Android project in Android Studio
-	npx cap open android
+native-run: ## Run the NativePHP app on a connected Android device
+	$(SAIL) php artisan native:run

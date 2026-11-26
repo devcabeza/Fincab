@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Infrastructure\ExchangeRate\DolarApiAndBinanceRateProvider;
 use App\Infrastructure\Messaging\MagicLinkNotifier;
 use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentMagicLinkTokenRepository;
 use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserRepository;
 use App\Mail\SendrixTransport;
+use App\Ports\Out\ExchangeRate\ExchangeRateProviderPort;
 use App\Ports\Out\Messaging\MagicLinkNotifierInterface;
 use App\Ports\Out\Persistence\MagicLinkTokenRepositoryInterface;
 use App\Ports\Out\Persistence\UserRepositoryInterface;
@@ -40,6 +42,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             MagicLinkNotifierInterface::class,
             MagicLinkNotifier::class,
+        );
+
+        $this->app->bind(
+            ExchangeRateProviderPort::class,
+            DolarApiAndBinanceRateProvider::class,
         );
     }
 

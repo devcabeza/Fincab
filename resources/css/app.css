@@ -20,7 +20,7 @@ html, body {
     width: 100%;
 }
 
-/* Capacitor & Mobile Safe Area Utilities */
+/* Mobile Safe Area Utilities */
 @utility pt-safe {
     padding-top: env(safe-area-inset-top, 0px);
 }
@@ -57,4 +57,38 @@ html, body {
 @utility touch-callout-none {
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
+}
+
+/* Browser Surfaces Theming */
+::selection {
+    background-color: rgba(99, 102, 241, 0.35);
+    color: #ffffff;
+}
+
+* {
+    caret-color: #818cf8;
+}
+
+/* Custom Subdued Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+}
+
+/* Tabular Numerals for Financial Accuracy */
+.font-mono, [data-tabular-nums] {
+    font-variant-numeric: tabular-nums;
 }

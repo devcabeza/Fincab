@@ -17,7 +17,9 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "livewire/blaze": "^1.0",
-        "livewire/livewire": "^4.1"
+        "livewire/livewire": "^4.1",
+        "nativephp/mobile": "^4.8",
+        "nativephp/mobile-ui": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",

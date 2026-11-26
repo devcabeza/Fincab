@@ -16,7 +16,7 @@ use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
-#[Title('Iniciar Sesión | Laravertex')]
+#[Title('Iniciar Sesión | Fincab')]
 class MagicLogin extends Component
 {
     #[Validate('required|email|max:255', message: [

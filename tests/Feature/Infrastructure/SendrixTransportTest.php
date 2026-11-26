@@ -24,9 +24,9 @@ it('sends an email via sendrix transport with correct payload structure', functi
     );
 
     $email = (new Email)
-        ->from(new Address('hello@laravertex.com', 'Laravertex App'))
+        ->from(new Address('hello@fincab.app', 'Fincab App'))
         ->to('usuario@ejemplo.com')
-        ->replyTo('support@laravertex.com')
+        ->replyTo('support@fincab.app')
         ->subject('Tu código de acceso')
         ->html('<p>Tu código es 123456</p>');
 
@@ -44,8 +44,8 @@ it('sends an email via sendrix transport with correct payload structure', functi
             && $data['to'] === 'usuario@ejemplo.com'
             && is_string($data['to'])
             && $data['subject'] === 'Tu código de acceso'
-            && $data['from_name'] === 'Laravertex App'
-            && $data['reply_to'] === 'support@laravertex.com'
+            && $data['from_name'] === 'Fincab App'
+            && $data['reply_to'] === 'support@fincab.app'
             && ! isset($data['cc'])
             && ! isset($data['bcc']);
     });

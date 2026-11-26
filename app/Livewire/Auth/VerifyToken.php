@@ -21,7 +21,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
-#[Title('Verificar Código | Laravertex')]
+#[Title('Verificar Código | Fincab')]
 class VerifyToken extends Component
 {
     #[Url]

@@ -3,7 +3,7 @@
         {{-- Header & Branding --}}
         <div class="text-center space-y-3">
             <div class="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 shadow-inner">
-                <img src="{{ asset('favicon.svg') }}" alt="Laravertex" class="w-8 h-8 sm:w-10 sm:h-10 select-none">
+                <img src="{{ asset('favicon.svg') }}" alt="Fincab" class="w-8 h-8 sm:w-10 sm:h-10 select-none">
             </div>
             <h1 class="text-2xl sm:text-4xl font-bold tracking-tight text-white select-none">
                 Acceso sin contraseña
@@ -14,27 +14,25 @@
         </div>
 
         {{-- Form Card --}}
-        <div class="bg-zinc-900/80 border border-zinc-800/80 rounded-2xl p-5 sm:p-8 shadow-2xl backdrop-blur-xl">
+        <x-card class="bg-zinc-900/90 border border-zinc-800 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
             <form wire:submit="submit" class="space-y-5 sm:space-y-6">
                 <x-honeypot wire:model="honeypot" />
                 <div>
                     <label for="email" class="block text-sm font-medium text-zinc-300 mb-2 select-none">
                         Correo electrónico
                     </label>
-                    <div class="relative">
-                        <input
-                            id="email"
-                            type="email"
-                            inputmode="email"
-                            autocomplete="email"
-                            autocapitalize="none"
-                            spellcheck="false"
-                            wire:model="email"
-                            placeholder="tu@ejemplo.com"
-                            class="w-full min-h-[48px] px-4 py-3 text-base rounded-xl bg-zinc-950 border border-zinc-700/80 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                    </div>
+                    <x-input
+                        id="email"
+                        type="email"
+                        inputmode="email"
+                        autocomplete="email"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        wire:model="email"
+                        placeholder="tu@ejemplo.com"
+                        class="w-full min-h-[48px]"
+                        required
+                    />
                     @error('email')
                         <p class="mt-2 text-sm text-rose-400 font-medium flex items-center gap-1.5">
                             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -46,10 +44,11 @@
                 </div>
 
                 <div>
-                    <button
+                    <x-button
                         type="submit"
+                        variant="primary"
                         wire:loading.attr="disabled"
-                        class="w-full min-h-[48px] px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-base shadow-lg shadow-indigo-600/25 transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
+                        class="w-full min-h-[48px] text-base"
                     >
                         <span wire:loading.remove wire:target="submit">Continuar con Email</span>
                         <span wire:loading wire:target="submit" class="inline-flex items-center gap-2">
@@ -59,7 +58,7 @@
                             </svg>
                             Enviando código...
                         </span>
-                    </button>
+                    </x-button>
                 </div>
             </form>
 
@@ -68,7 +67,7 @@
                     Al continuar, si tu cuenta no existe será creada automáticamente. No necesitas recordar ninguna contraseña.
                 </p>
             </div>
-        </div>
+        </x-card>
 
         {{-- Back home link --}}
         <div class="text-center">
