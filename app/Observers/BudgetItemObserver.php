@@ -110,18 +110,25 @@ final class BudgetItemObserver
 
             $exchangeRate = '1.000000000000';
             if ($debt->currency_code !== 'USD') {
-                $rate = CurrencyRate::query()
-                    ->where('from_currency', $debt->currency_code)
-                    ->where('to_currency', 'USD')
-                    ->latest('effective_on')
-                    ->value('rate');
-
-                if ($rate !== null && is_numeric($rate)) {
+                $rate = CurrencyRate::getMultiplier($debt->currency_code, 'USD');
+                if ($rate !== null && is_numeric($rate) && (float) $rate > 0) {
                     $exchangeRate = (string) $rate;
                 }
             }
 
             $paymentAmountUsd = bcmul($paymentAmount, $exchangeRate, 8);
+
+            $accountDeduction = $paymentAmount;
+            if ($account->currency_code !== $debt->currency_code) {
+                if ($account->currency_code === 'USD') {
+                    $accountDeduction = $paymentAmountUsd;
+                } else {
+                    $accMult = CurrencyRate::getMultiplier($account->currency_code, 'USD');
+                    $accountDeduction = ($accMult && (float) $accMult > 0)
+                        ? bcdiv($paymentAmountUsd, (string) $accMult, 8)
+                        : $paymentAmount;
+                }
+            }
 
             /** @var FinancialTransaction $transaction */
             $transaction = FinancialTransaction::query()->create([
@@ -134,14 +141,14 @@ final class BudgetItemObserver
                 'currency_code' => $debt->currency_code,
                 'exchange_rate_to_usd' => $exchangeRate,
                 'amount_usd' => $paymentAmountUsd,
-                'account_amount' => $paymentAmount,
+                'account_amount' => $accountDeduction,
                 'account_currency_code' => $account->currency_code,
                 'idempotency_key' => $idempotencyKey,
                 'occurred_at' => now(),
             ]);
 
             $currentAccountBal = $this->toNumeric($account->opening_balance);
-            $newAccountBal = bcsub($currentAccountBal, $paymentAmount, 8);
+            $newAccountBal = bcsub($currentAccountBal, $accountDeduction, 8);
             $account->update(['opening_balance' => $newAccountBal]);
 
             DebtPayment::query()->create([
@@ -194,7 +201,7 @@ final class BudgetItemObserver
                 $account = Account::query()->find($transaction->account_id);
                 if ($account !== null) {
                     $currentAccountBal = $this->toNumeric($account->opening_balance);
-                    $restoredAccountBal = bcadd($currentAccountBal, $principal, 8);
+                    $restoredAccountBal = bcadd($currentAccountBal, $this->toNumeric($transaction->account_amount), 8);
                     $account->update(['opening_balance' => $restoredAccountBal]);
                 }
 
@@ -246,38 +253,35 @@ final class BudgetItemObserver
             $isIncome = $item->item_type === 'income';
             $transactionType = $isIncome ? 'income' : 'expense';
 
-            $currentOpening = $this->toNumeric($account->opening_balance);
-            $newOpening = $isIncome
-                ? bcadd($currentOpening, $totalAmount, 8)
-                : bcsub($currentOpening, $totalAmount, 8);
-
-            $account->update(['opening_balance' => $newOpening]);
-
             $exchangeRate = '1.000000000000';
-            if ($account->currency_code !== 'USD') {
-                $rate = CurrencyRate::query()
-                    ->where('from_currency', $account->currency_code)
-                    ->where('to_currency', 'USD')
-                    ->latest('effective_on')
-                    ->value('rate');
+            $accountAmount = $totalAmount;
+            $amountUsd = $totalAmount;
 
-                if ($rate !== null && is_numeric($rate)) {
-                    $exchangeRate = (string) $rate;
+            if ($account->currency_code !== 'USD') {
+                $multiplier = CurrencyRate::getMultiplier($account->currency_code, 'USD');
+                if ($multiplier !== null && is_numeric($multiplier) && (float) $multiplier > 0) {
+                    $exchangeRate = (string) $multiplier;
+                    $accountAmount = bcdiv($totalAmount, (string) $multiplier, 8);
                 }
             }
 
-            $amountUsd = bcmul($totalAmount, $exchangeRate, 8);
+            $currentOpening = $this->toNumeric($account->opening_balance);
+            $newOpening = $isIncome
+                ? bcadd($currentOpening, $accountAmount, 8)
+                : bcsub($currentOpening, $accountAmount, 8);
+
+            $account->update(['opening_balance' => $newOpening]);
 
             FinancialTransaction::query()->create([
                 'workspace_id' => $item->workspace_id,
                 'account_id' => $account->id,
                 'budget_item_id' => $item->id,
                 'transaction_type' => $transactionType,
-                'amount_original' => $totalAmount,
+                'amount_original' => $accountAmount,
                 'currency_code' => $account->currency_code,
                 'exchange_rate_to_usd' => $exchangeRate,
                 'amount_usd' => $amountUsd,
-                'account_amount' => $totalAmount,
+                'account_amount' => $accountAmount,
                 'account_currency_code' => $account->currency_code,
                 'idempotency_key' => $idempotencyKey,
                 'occurred_at' => now(),

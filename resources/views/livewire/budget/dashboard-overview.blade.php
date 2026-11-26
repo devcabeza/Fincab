@@ -407,13 +407,110 @@
 
                     <div>
                         <label class="block text-xs font-semibold text-zinc-300 mb-1">Cuenta de Pago (Opcional)</label>
-                        <select wire:model="quickAccountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 cursor-pointer min-h-[44px]">
+                        <select wire:model.live="quickAccountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 cursor-pointer min-h-[44px]">
                             <option value="">Sin cuenta vinculada</option>
                             @foreach ($accounts as $account)
-                                <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->currency_code }}) · Saldo: ${{ number_format((float) $account->opening_balance, 2) }}</option>
+                                <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->currency_code }}) · Saldo: {{ $account->currency_code === 'USD' ? '$' . number_format((float) $account->opening_balance, 2) : number_format((float) $account->opening_balance, 2) . ' ' . $account->currency_code }}</option>
                             @endforeach
                         </select>
                     </div>
+
+                    @php
+                        $quickSelectedAcc = $accounts->firstWhere('id', $quickAccountId);
+                    @endphp
+                    @if ($quickSelectedAcc && $quickSelectedAcc->currency_code !== 'USD')
+                        <div class="p-3.5 bg-zinc-950/90 border border-indigo-500/40 rounded-xl space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Tasa de cambio para {{ $quickSelectedAcc->name }} ({{ $quickSelectedAcc->currency_code }})</span>
+                                </span>
+                                <span class="text-[11px] text-zinc-400 font-mono">
+                                    1 USD = {{ $this->getQuickExchangeRate() ? number_format((float) $this->getQuickExchangeRate(), 2) : '1.00' }} {{ $quickSelectedAcc->currency_code }}
+                                </span>
+                            </div>
+
+                            @if ($quickSelectedAcc->currency_code === 'VES')
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+                                    <button
+                                        type="button"
+                                        wire:click="selectQuickRateSource('bcv')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $quickRateSource === 'bcv' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        BCV: {{ $latestBcv ? number_format((float) $latestBcv, 2) : '924.35' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectQuickRateSource('paralelo')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $quickRateSource === 'paralelo' ? 'border-amber-500 bg-amber-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Paralelo: {{ $latestParalelo ? number_format((float) $latestParalelo, 2) : '1095.44' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectQuickRateSource('binance')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $quickRateSource === 'binance' ? 'border-yellow-500 bg-yellow-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Binance P2P: {{ $latestBinanceVes ? number_format((float) $latestBinanceVes, 2) : '1090.00' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectQuickRateSource('manual')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $quickRateSource === 'manual' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Personalizada
+                                    </button>
+                                </div>
+                            @elseif ($quickSelectedAcc->currency_code === 'COP')
+                                <div class="grid grid-cols-3 gap-1.5 text-xs">
+                                    <button
+                                        type="button"
+                                        wire:click="selectQuickRateSource('official')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $quickRateSource === 'official' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        TRM: {{ $latestCop ? number_format((float) $latestCop, 0) : '3604' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectQuickRateSource('binance')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $quickRateSource === 'binance' ? 'border-yellow-500 bg-yellow-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Binance: {{ $latestCopBinance ? number_format((float) $latestCopBinance, 0) : '3468' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectQuickRateSource('manual')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $quickRateSource === 'manual' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Personalizada
+                                    </button>
+                                </div>
+                            @endif
+
+                            @if ($quickRateSource === 'manual')
+                                <div class="pt-1">
+                                    <label class="block text-[11px] font-semibold text-zinc-400 mb-1">Ingresa tu tasa personalizada (1 USD = ? {{ $quickSelectedAcc->currency_code }}):</label>
+                                    <x-input wire:model.live.debounce.250ms="quickManualQuote" type="number" step="0.01" placeholder="Ej: 950.00" class="text-xs font-mono" />
+                                </div>
+                            @endif
+
+                            <div class="flex items-center justify-between text-xs bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800 font-mono">
+                                <span class="text-zinc-400">Débito estimado en cuenta:</span>
+                                <span class="font-bold text-emerald-400">
+                                    @php
+                                        $qRateVal = $this->getQuickExchangeRate();
+                                    @endphp
+                                    @if ($quickAmount && is_numeric($quickAmount) && (float) $quickAmount > 0 && $qRateVal && (float) $qRateVal > 0)
+                                        {{ number_format((float) bcmul((string) $quickAmount, (string) $qRateVal, 2), 2) }} {{ $quickSelectedAcc->currency_code }}
+                                    @else
+                                        0.00 {{ $quickSelectedAcc->currency_code }}
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                    @endif
 
                     <div>
                         <label class="block text-xs font-semibold text-zinc-300 mb-1">Vincular a Deuda (Opcional)</label>

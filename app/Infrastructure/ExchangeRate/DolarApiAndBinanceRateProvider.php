@@ -20,7 +20,7 @@ class DolarApiAndBinanceRateProvider implements ExchangeRateProviderPort
 
         // 1. Venezuela Rates: BCV and Paralelo via DolarAPI
         try {
-            $response = Http::timeout(6)->get('https://ve.dolarapi.com/v1/dolares');
+            $response = Http::timeout(15)->retry(2, 500)->get('https://ve.dolarapi.com/v1/dolares');
             if ($response->successful()) {
                 /** @var array<int, array<string, mixed>> $data */
                 $data = $response->json();
@@ -69,7 +69,7 @@ class DolarApiAndBinanceRateProvider implements ExchangeRateProviderPort
         // 2. Binance P2P: VES and COP
         try {
             // VES P2P
-            $vesResponse = Http::timeout(6)->post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', [
+            $vesResponse = Http::timeout(10)->retry(2, 500)->post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', [
                 'asset' => 'USDT',
                 'fiat' => 'VES',
                 'merchantCheck' => false,
@@ -83,13 +83,32 @@ class DolarApiAndBinanceRateProvider implements ExchangeRateProviderPort
                 $price = $vesResponse->json('data.0.adv.price');
                 if (is_numeric($price) && (float) $price > 0) {
                     $quote = (string) $price;
+                    $multiplier = bcdiv('1', $quote, 12);
                     $rates[] = [
                         'source' => 'binance',
                         'from_currency' => 'VES',
                         'to_currency' => 'USD',
                         'quote_rate' => $quote,
-                        'rate' => bcdiv('1', $quote, 12),
+                        'rate' => $multiplier,
                     ];
+
+                    $hasVesDefault = false;
+                    foreach ($rates as $r) {
+                        if ($r['source'] === 'default') {
+                            $hasVesDefault = true;
+                            break;
+                        }
+                    }
+
+                    if (! $hasVesDefault) {
+                        $rates[] = [
+                            'source' => 'default',
+                            'from_currency' => 'VES',
+                            'to_currency' => 'USD',
+                            'quote_rate' => $quote,
+                            'rate' => $multiplier,
+                        ];
+                    }
                 }
             }
 

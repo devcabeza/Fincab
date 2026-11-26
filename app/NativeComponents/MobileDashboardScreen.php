@@ -89,7 +89,7 @@ class MobileDashboardScreen extends NativeComponent
 
         $liquidCash = '0.00';
         foreach ($accounts as $acc) {
-            $liquidCash = bcadd($liquidCash, (string) $acc->opening_balance, 2);
+            $liquidCash = bcadd($liquidCash, $acc->getBalanceInUsd(), 2);
         }
 
         $debts = Debt::query()

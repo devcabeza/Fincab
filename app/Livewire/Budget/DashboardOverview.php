@@ -121,17 +121,7 @@ class DashboardOverview extends Component
         $this->recalculateQuickFromLocalAmount();
     }
 
-    public function updatedQuickRateSource(string $val): void
-    {
-        $this->recalculateQuickFromLocalAmount();
-    }
-
     public function updatedQuickLocalAmount(string $val): void
-    {
-        $this->recalculateQuickFromLocalAmount();
-    }
-
-    public function updatedQuickManualQuote(string $val): void
     {
         $this->recalculateQuickFromLocalAmount();
     }
@@ -139,7 +129,68 @@ class DashboardOverview extends Component
     public function selectQuickRateSource(string $source): void
     {
         $this->quickRateSource = $source;
-        $this->recalculateQuickFromLocalAmount();
+        $this->syncQuickAmountsAfterRateChange();
+    }
+
+    public function updatedQuickRateSource(string $val): void
+    {
+        $this->syncQuickAmountsAfterRateChange();
+    }
+
+    public function updatedQuickManualQuote(string $val): void
+    {
+        $this->syncQuickAmountsAfterRateChange();
+    }
+
+    public function updatedQuickAccountId(?int $val): void
+    {
+        if (! $val || ! $this->selectedWorkspaceId) {
+            $this->quickCurrency = 'USD';
+
+            return;
+        }
+
+        /** @var Account|null $account */
+        $account = Account::query()
+            ->where('workspace_id', $this->selectedWorkspaceId)
+            ->find($val);
+
+        if (! $account) {
+            return;
+        }
+
+        if ($account->currency_code !== 'USD') {
+            $this->quickCurrency = $account->currency_code;
+
+            if ($this->quickCurrency === 'VES' && ! in_array($this->quickRateSource, ['bcv', 'paralelo', 'binance', 'manual'], true)) {
+                $this->quickRateSource = 'bcv';
+            } elseif ($this->quickCurrency === 'COP' && ! in_array($this->quickRateSource, ['official', 'binance', 'manual'], true)) {
+                $this->quickRateSource = 'official';
+            }
+
+            if (! empty($this->quickAmount) && is_numeric($this->quickAmount) && (float) $this->quickAmount > 0) {
+                $rate = $this->getQuickExchangeRate();
+                if ($rate && (float) $rate > 0) {
+                    $this->quickLocalAmount = bcmul((string) $this->quickAmount, $this->toNumeric($rate), 2);
+                }
+            }
+        } else {
+            $this->quickCurrency = 'USD';
+        }
+    }
+
+    private function syncQuickAmountsAfterRateChange(): void
+    {
+        $rate = $this->getQuickExchangeRate();
+        if (! $rate || (float) $rate <= 0) {
+            return;
+        }
+
+        if (! empty($this->quickLocalAmount) && is_numeric($this->quickLocalAmount) && (float) $this->quickLocalAmount > 0) {
+            $this->quickAmount = bcdiv((string) $this->quickLocalAmount, $this->toNumeric($rate), 2);
+        } elseif (! empty($this->quickAmount) && is_numeric($this->quickAmount) && (float) $this->quickAmount > 0) {
+            $this->quickLocalAmount = bcmul((string) $this->quickAmount, $this->toNumeric($rate), 2);
+        }
     }
 
     public function getQuickExchangeRate(): ?string
@@ -279,7 +330,7 @@ class DashboardOverview extends Component
 
         $totalLiquidCash = '0.00000000';
         foreach ($accounts as $acc) {
-            $totalLiquidCash = bcadd($totalLiquidCash, $this->toNumeric($acc->opening_balance), 8);
+            $totalLiquidCash = bcadd($totalLiquidCash, $this->toNumeric($acc->getBalanceInUsd()), 8);
         }
 
         $cashFlowSummary = null;
@@ -345,6 +396,7 @@ class DashboardOverview extends Component
             'latestParalelo' => $latestParalelo,
             'latestBinanceVes' => $latestBinanceVes,
             'latestCop' => $latestCop,
+            'latestCopBinance' => CurrencyRate::getQuote('COP', 'USD', 'binance'),
         ]);
     }
 

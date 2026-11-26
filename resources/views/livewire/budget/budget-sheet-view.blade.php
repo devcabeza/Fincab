@@ -392,9 +392,12 @@
                             @elseif ($currency === 'COP')
                                 <div class="pt-1 space-y-2">
                                     <label class="block text-[11px] font-semibold text-zinc-400">Tasa de cambio</label>
-                                    <div class="grid grid-cols-2 gap-1.5 text-[11px]">
-                                        <button type="button" wire:click="selectRateSource('official')" class="py-2 px-1.5 rounded-lg border text-center font-bold {{ $rateSource !== 'manual' ? 'border-indigo-500 bg-indigo-600 text-white' : 'border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:text-white' }}">
-                                            TRM Oficial: {{ $copQuote ? number_format((float) $copQuote, 2) : '3516.05' }}
+                                    <div class="grid grid-cols-3 gap-1.5 text-[11px]">
+                                        <button type="button" wire:click="selectRateSource('official')" class="py-2 px-1.5 rounded-lg border text-center font-bold {{ $rateSource === 'official' ? 'border-indigo-500 bg-indigo-600 text-white' : 'border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:text-white' }}">
+                                            TRM: {{ $copQuote ? number_format((float) $copQuote, 0) : '3604' }}
+                                        </button>
+                                        <button type="button" wire:click="selectRateSource('binance')" class="py-2 px-1.5 rounded-lg border text-center font-bold {{ $rateSource === 'binance' ? 'border-yellow-500 bg-yellow-600 text-white' : 'border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:text-white' }}">
+                                            P2P: {{ $copBinanceQuote ? number_format((float) $copBinanceQuote, 0) : '3468' }}
                                         </button>
                                         <button type="button" wire:click="selectRateSource('manual')" class="py-2 px-1.5 rounded-lg border text-center font-bold {{ $rateSource === 'manual' ? 'border-indigo-500 bg-indigo-600 text-white' : 'border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:text-white' }}">
                                             Manual
@@ -421,10 +424,10 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-semibold text-zinc-300 mb-1">Cuenta de Pago</label>
-                            <select wire:model="accountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 cursor-pointer min-h-[44px]">
+                            <select wire:model.live="accountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 cursor-pointer min-h-[44px]">
                                 <option value="">Sin cuenta vinculada</option>
                                 @foreach ($accounts as $acc)
-                                    <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->currency_code }}) · ${{ number_format((float) $acc->opening_balance, 2) }}</option>
+                                    <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->currency_code }}) · {{ $acc->currency_code === 'USD' ? '$' . number_format((float) $acc->opening_balance, 2) : number_format((float) $acc->opening_balance, 2) . ' ' . $acc->currency_code }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -450,6 +453,104 @@
                             </div>
                         @endif
                     </div>
+
+                    {{-- Dedicated Rate Configuration Box for Non-USD Account --}}
+                    @php
+                        $selectedAcc = $accounts->firstWhere('id', $accountId);
+                    @endphp
+                    @if ($selectedAcc && $selectedAcc->currency_code !== 'USD')
+                        <div class="p-3.5 bg-zinc-950/90 border border-indigo-500/40 rounded-xl space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Tasa de cambio para {{ $selectedAcc->name }} ({{ $selectedAcc->currency_code }})</span>
+                                </span>
+                                <span class="text-[11px] text-zinc-400 font-mono">
+                                    1 USD = {{ $this->getActiveExchangeRate() ? number_format((float) $this->getActiveExchangeRate(), 2) : '1.00' }} {{ $selectedAcc->currency_code }}
+                                </span>
+                            </div>
+
+                            @if ($selectedAcc->currency_code === 'VES')
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+                                    <button
+                                        type="button"
+                                        wire:click="selectRateSource('bcv')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $rateSource === 'bcv' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        BCV: {{ $bcvQuote ? number_format((float) $bcvQuote, 2) : '924.35' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectRateSource('paralelo')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $rateSource === 'paralelo' ? 'border-amber-500 bg-amber-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Paralelo: {{ $paraleloQuote ? number_format((float) $paraleloQuote, 2) : '1095.44' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectRateSource('binance')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $rateSource === 'binance' ? 'border-yellow-500 bg-yellow-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Binance P2P: {{ $binanceVesQuote ? number_format((float) $binanceVesQuote, 2) : '1090.00' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectRateSource('manual')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $rateSource === 'manual' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Personalizada
+                                    </button>
+                                </div>
+                            @elseif ($selectedAcc->currency_code === 'COP')
+                                <div class="grid grid-cols-3 gap-1.5 text-xs">
+                                    <button
+                                        type="button"
+                                        wire:click="selectRateSource('official')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $rateSource === 'official' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        TRM: {{ $copQuote ? number_format((float) $copQuote, 0) : '3604' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectRateSource('binance')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $rateSource === 'binance' ? 'border-yellow-500 bg-yellow-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Binance: {{ $copBinanceQuote ? number_format((float) $copBinanceQuote, 0) : '3468' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="selectRateSource('manual')"
+                                        class="py-2 px-1.5 rounded-lg border text-center font-bold transition-all min-h-[38px] {{ $rateSource === 'manual' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-zinc-700 bg-zinc-800/90 text-zinc-300 hover:text-white' }}"
+                                    >
+                                        Personalizada
+                                    </button>
+                                </div>
+                            @endif
+
+                            @if ($rateSource === 'manual')
+                                <div class="pt-1">
+                                    <label class="block text-[11px] font-semibold text-zinc-400 mb-1">Ingresa tu tasa personalizada (1 USD = ? {{ $selectedAcc->currency_code }}):</label>
+                                    <x-input wire:model.live.debounce.250ms="manualQuote" type="number" step="0.01" placeholder="Ej: 950.00" class="text-xs font-mono" />
+                                </div>
+                            @endif
+
+                            <div class="flex items-center justify-between text-xs bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800 font-mono">
+                                <span class="text-zinc-400">Débito estimado en cuenta:</span>
+                                <span class="font-bold text-emerald-400">
+                                    @php
+                                        $activeRateVal = $this->getActiveExchangeRate();
+                                    @endphp
+                                    @if ($totalAmount && is_numeric($totalAmount) && (float) $totalAmount > 0 && $activeRateVal && (float) $activeRateVal > 0)
+                                        {{ number_format((float) bcmul((string) $totalAmount, (string) $activeRateVal, 2), 2) }} {{ $selectedAcc->currency_code }}
+                                    @else
+                                        0.00 {{ $selectedAcc->currency_code }}
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- 4. Type & Recurring Row --}}
                     <div class="flex items-center justify-between gap-3 pt-1">

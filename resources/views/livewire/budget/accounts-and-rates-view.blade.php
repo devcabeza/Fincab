@@ -11,7 +11,7 @@
                 <x-button wire:click="openCreateAccountModal" variant="primary" class="min-h-[40px]">
                     <span>+ Nueva Cuenta</span>
                 </x-button>
-                <x-button wire:click="$toggle('showTransferModal')" variant="neutral" class="bg-zinc-800 text-white min-h-[40px]">
+                <x-button wire:click="openTransferModal" variant="neutral" class="bg-zinc-800 text-white min-h-[40px]">
                     <span>Transferir entre Cuentas</span>
                 </x-button>
             </div>
@@ -91,9 +91,25 @@
 
                         <div class="mt-4 flex justify-between items-baseline">
                             <span class="text-xs text-zinc-400">Saldo vivo:</span>
-                            <span class="text-xl font-extrabold text-emerald-400 font-mono">
-                                ${{ number_format((float) $account->opening_balance, 2) }}
-                            </span>
+                            <div class="text-right">
+                                <span class="text-xl font-extrabold text-emerald-400 font-mono">
+                                    @if ($account->currency_code === 'USD')
+                                        ${{ number_format((float) $account->opening_balance, 2) }}
+                                    @else
+                                        {{ number_format((float) $account->opening_balance, 2) }} <span class="text-xs font-semibold text-zinc-400 font-sans">{{ $account->currency_code }}</span>
+                                    @endif
+                                </span>
+                                @if ($account->currency_code !== 'USD')
+                                    @php
+                                        $approxUsd = (float) $account->getBalanceInUsd();
+                                    @endphp
+                                    @if ($approxUsd > 0)
+                                        <div class="text-[11px] text-zinc-400 font-mono">
+                                            ≈ ${{ number_format($approxUsd, 2) }} USD
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
                         </div>
                     </x-card>
                 @empty
@@ -182,12 +198,16 @@
                                     {{ $tx->budgetItem?->title ?? $tx->notes ?? '—' }}
                                 </td>
                                 <td class="px-4 py-2.5 text-right font-bold tabular-nums">
+                                    @php
+                                        $curr = $tx->currency_code ?: 'USD';
+                                        $formattedAmount = number_format((float) $tx->amount_original, 2);
+                                    @endphp
                                     @if ($tx->transaction_type === 'income')
-                                        <span class="text-emerald-400">+${{ number_format((float) $tx->amount_original, 2) }}</span>
+                                        <span class="text-emerald-400">+{{ $curr === 'USD' ? '$' . $formattedAmount : $formattedAmount . ' ' . $curr }}</span>
                                     @elseif ($tx->transaction_type === 'transfer')
-                                        <span class="text-indigo-300">${{ number_format((float) $tx->amount_original, 2) }}</span>
+                                        <span class="text-indigo-300">{{ $curr === 'USD' ? '$' . $formattedAmount : $formattedAmount . ' ' . $curr }}</span>
                                     @else
-                                        <span class="text-white">-${{ number_format((float) $tx->amount_original, 2) }}</span>
+                                        <span class="text-white">-{{ $curr === 'USD' ? '$' . $formattedAmount : $formattedAmount . ' ' . $curr }}</span>
                                     @endif
                                 </td>
                             </tr>
@@ -219,13 +239,19 @@
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-300 mb-1">Moneda (ISO)</label>
-                            <x-input wire:model="newAccountCurrency" placeholder="USD" maxlength="3" />
+                            <label class="block text-xs font-semibold text-zinc-300 mb-1">Moneda</label>
+                            <select wire:model.live="newAccountCurrency" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 min-h-[44px]">
+                                <option value="USD">USD — Dólar ($)</option>
+                                <option value="VES">VES — Bolívar (Bs)</option>
+                                <option value="COP">COP — Peso Colombiano ($)</option>
+                            </select>
                             @error('newAccountCurrency') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-300 mb-1">Saldo Inicial</label>
+                            <label class="block text-xs font-semibold text-zinc-300 mb-1">
+                                Saldo Inicial <span class="text-indigo-400 font-normal font-mono">({{ strtoupper($newAccountCurrency ?: 'USD') }})</span>
+                            </label>
                             <x-input wire:model="newAccountBalance" type="number" step="0.01" />
                             @error('newAccountBalance') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
                         </div>
@@ -247,16 +273,23 @@
     {{-- Transfer Modal --}}
     @if ($showTransferModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4">
-                <h3 class="text-lg font-bold text-white">Transferencia entre Cuentas</h3>
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+                <div class="flex items-center justify-between pb-2 border-b border-zinc-800">
+                    <h3 class="text-lg font-bold text-white">Transferencia entre Cuentas</h3>
+                    <button wire:click="$set('showTransferModal', false)" class="text-zinc-400 hover:text-white p-1" aria-label="Cerrar modal">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
-                <form wire:submit="executeTransfer" class="space-y-3">
+                <form wire:submit="executeTransfer" class="space-y-3.5">
                     <div>
                         <label class="block text-xs font-semibold text-zinc-300 mb-1">Cuenta de Origen</label>
-                        <select wire:model="fromAccountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm">
-                            <option value="">Seleccione cuenta...</option>
+                        <select wire:model.live="fromAccountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 min-h-[44px]">
+                            <option value="">Seleccione cuenta de origen...</option>
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}">{{ $acc->name }} (Saldo: ${{ number_format((float) $acc->opening_balance, 2) }})</option>
+                                <option value="{{ $acc->id }}">{{ $acc->name }} (Saldo: {{ $acc->currency_code === 'USD' ? '$' . number_format((float) $acc->opening_balance, 2) : number_format((float) $acc->opening_balance, 2) . ' ' . $acc->currency_code }})</option>
                             @endforeach
                         </select>
                         @error('fromAccountId') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
@@ -264,20 +297,90 @@
 
                     <div>
                         <label class="block text-xs font-semibold text-zinc-300 mb-1">Cuenta de Destino</label>
-                        <select wire:model="toAccountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm">
-                            <option value="">Seleccione cuenta...</option>
+                        <select wire:model.live="toAccountId" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 min-h-[44px]">
+                            <option value="">Seleccione cuenta de destino...</option>
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}">{{ $acc->name }} (Saldo: ${{ number_format((float) $acc->opening_balance, 2) }})</option>
+                                <option value="{{ $acc->id }}">{{ $acc->name }} (Saldo: {{ $acc->currency_code === 'USD' ? '$' . number_format((float) $acc->opening_balance, 2) : number_format((float) $acc->opening_balance, 2) . ' ' . $acc->currency_code }})</option>
                             @endforeach
                         </select>
                         @error('toAccountId') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
                     </div>
 
+                    @php
+                        $conversion = $this->getTransferConversionDetails();
+                        $fromAcc = $fromAccountId ? $accounts->firstWhere('id', $fromAccountId) : null;
+                        $toAcc = $toAccountId ? $accounts->firstWhere('id', $toAccountId) : null;
+                    @endphp
+
                     <div>
-                        <label class="block text-xs font-semibold text-zinc-300 mb-1">Monto a Transferir ($)</label>
-                        <x-input wire:model="transferAmount" type="number" step="0.01" />
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1">
+                            Monto a Transferir
+                            @if ($fromAcc)
+                                <span class="text-indigo-400 font-normal font-mono">({{ $fromAcc->currency_code }})</span>
+                            @endif
+                        </label>
+                        <x-input wire:model.live="transferAmount" type="number" step="0.01" placeholder="0.00" />
                         @error('transferAmount') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
                     </div>
+
+                    {{-- Rate Selector when cross-currency --}}
+                    @if ($conversion['isCrossCurrency'] && $fromAcc && $toAcc)
+                        <div class="space-y-2.5 p-3 bg-zinc-950/70 border border-zinc-800 rounded-xl">
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-300 mb-1">
+                                    Tasa de Cambio a Aplicar
+                                </label>
+                                <select wire:model.live="transferRateSource" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 min-h-[40px]">
+                                    @if ((in_array($conversion['fromCurrency'], ['USD', 'VES'], true) && in_array($conversion['toCurrency'], ['USD', 'VES'], true)))
+                                        <option value="bcv">Tasa BCV (Oficial) — {{ $latestBcv ? number_format((float)$latestBcv, 2) . ' Bs/$' : 'Cargando...' }}</option>
+                                        <option value="paralelo">Tasa Paralelo — {{ $latestParalelo ? number_format((float)$latestParalelo, 2) . ' Bs/$' : 'Cargando...' }}</option>
+                                        <option value="binance">Tasa Binance P2P — {{ $latestBinanceVes ? number_format((float)$latestBinanceVes, 2) . ' Bs/$' : 'Cargando...' }}</option>
+                                        <option value="custom">✏️ Tasa Personalizada (Manual)</option>
+                                    @elseif ((in_array($conversion['fromCurrency'], ['USD', 'COP'], true) && in_array($conversion['toCurrency'], ['USD', 'COP'], true)))
+                                        <option value="official">Tasa Oficial (TRM) — {{ $latestCop ? number_format((float)$latestCop, 2) . ' COP/$' : 'Cargando...' }}</option>
+                                        <option value="binance">Tasa Binance P2P — {{ \App\Models\CurrencyRate::getQuote('COP', 'USD', 'binance') ? number_format((float)\App\Models\CurrencyRate::getQuote('COP', 'USD', 'binance'), 2) . ' COP/$' : 'Cargando...' }}</option>
+                                        <option value="custom">✏️ Tasa Personalizada (Manual)</option>
+                                    @else
+                                        <option value="auto">Tasa Automática Cruzada</option>
+                                        <option value="custom">✏️ Tasa Personalizada (Manual)</option>
+                                    @endif
+                                </select>
+                            </div>
+
+                            @if ($transferRateSource === 'custom')
+                                <div>
+                                    <label class="block text-xs font-semibold text-zinc-300 mb-1">
+                                        Ingresa Tasa de Cambio Manual
+                                        @if (in_array($conversion['fromCurrency'], ['USD', 'VES'], true) && in_array($conversion['toCurrency'], ['USD', 'VES'], true))
+                                            <span class="text-zinc-400 font-normal">(Bs por 1 USD)</span>
+                                        @elseif (in_array($conversion['fromCurrency'], ['USD', 'COP'], true) && in_array($conversion['toCurrency'], ['USD', 'COP'], true))
+                                            <span class="text-zinc-400 font-normal">(COP por 1 USD)</span>
+                                        @endif
+                                    </label>
+                                    <x-input wire:model.live="customExchangeRate" type="number" step="0.01" placeholder="Ej: 1045.50" />
+                                    @error('customExchangeRate') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
+                                </div>
+                            @endif
+
+                            {{-- Live Conversion Preview --}}
+                            @if ((float)$transferAmount > 0)
+                                <div class="border-t border-zinc-800/80 pt-2 space-y-1 text-xs font-mono">
+                                    <div class="flex justify-between text-zinc-400">
+                                        <span>Debita de {{ $fromAcc->name }}:</span>
+                                        <span class="font-bold text-white">{{ number_format((float)$transferAmount, 2) }} {{ $fromAcc->currency_code }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-indigo-400 text-[11px]">
+                                        <span>Tasa:</span>
+                                        <span class="truncate ml-2 text-right">{{ $conversion['rateLabel'] }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-emerald-400 font-bold border-t border-zinc-800/60 pt-1">
+                                        <span>Acredita en {{ $toAcc->name }}:</span>
+                                        <span>+{{ number_format((float)$conversion['destinationAmount'], 2) }} {{ $toAcc->currency_code }}</span>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <div>
                         <label class="block text-xs font-semibold text-zinc-300 mb-1">Notas / Concepto (Opcional)</label>
@@ -285,7 +388,7 @@
                     </div>
 
                     <div class="flex justify-end gap-2 pt-3">
-                        <x-button wire:click="$toggle('showTransferModal')" type="button" variant="neutral">
+                        <x-button wire:click="$set('showTransferModal', false)" type="button" variant="neutral">
                             Cancelar
                         </x-button>
                         <x-button type="submit" variant="primary">
@@ -300,8 +403,15 @@
     {{-- Edit Account Modal --}}
     @if ($showEditAccountModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4">
-                <h3 class="text-lg font-bold text-white">Editar Cuenta / Método de Pago</h3>
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+                <div class="flex items-center justify-between pb-2 border-b border-zinc-800">
+                    <h3 class="text-lg font-bold text-white">Editar Cuenta / Método de Pago</h3>
+                    <button wire:click="$set('showEditAccountModal', false)" class="text-zinc-400 hover:text-white p-1" aria-label="Cerrar modal">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
                 <form wire:submit="updateAccount" class="space-y-3">
                     <div>
@@ -312,13 +422,19 @@
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-300 mb-1">Moneda (ISO)</label>
-                            <x-input wire:model="editAccountCurrency" placeholder="USD" maxlength="3" />
+                            <label class="block text-xs font-semibold text-zinc-300 mb-1">Moneda</label>
+                            <select wire:model.live="editAccountCurrency" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 min-h-[44px]">
+                                <option value="USD">USD — Dólar ($)</option>
+                                <option value="VES">VES — Bolívar (Bs)</option>
+                                <option value="COP">COP — Peso Colombiano ($)</option>
+                            </select>
                             @error('editAccountCurrency') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-300 mb-1">Saldo Vivo</label>
+                            <label class="block text-xs font-semibold text-zinc-300 mb-1">
+                                Saldo Vivo <span class="text-indigo-400 font-normal font-mono">({{ strtoupper($editAccountCurrency ?: 'USD') }})</span>
+                            </label>
                             <x-input wire:model="editAccountBalance" type="number" step="0.01" />
                             @error('editAccountBalance') <span class="text-rose-400 text-xs">{{ $message }}</span> @enderror
                         </div>

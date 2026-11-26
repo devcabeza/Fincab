@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Application\Budget\Actions\GetLiquidityMetricsAction;
 use App\Livewire\Budget\AccountsAndRatesView;
 use App\Livewire\Budget\BudgetSheetView;
 use App\Livewire\Budget\DashboardOverview;
@@ -11,6 +12,7 @@ use App\Models\Account;
 use App\Models\BudgetBucket;
 use App\Models\BudgetItem;
 use App\Models\BudgetPeriod;
+use App\Models\CurrencyRate;
 use App\Models\Debt;
 use App\Models\DebtPayment;
 use App\Models\FinancialTransaction;
@@ -177,6 +179,36 @@ it('updates debt strategy and simulates extra payment in DebtManagerView', funct
     expect($period->fresh()->debt_strategy)->toBe('snowball');
 });
 
+it('accurately projects immediate debt liquidation and surplus when extra payment exceeds debt balance', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::query()->create([
+        'owner_id' => $user->id,
+        'name' => 'Personal',
+        'type' => 'personal',
+        'base_currency' => 'USD',
+    ]);
+
+    Debt::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Magaly',
+        'currency_code' => 'USD',
+        'initial_balance' => '27.00',
+        'current_balance' => '27.00',
+        'annual_interest_rate' => '0.00',
+        'minimum_payment' => '0.00',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(DebtManagerView::class)
+        ->assertOk()
+        ->set('simulatorExtra', '100.00')
+        ->assertSee('liquidas el 100% de esta deuda de inmediato')
+        ->assertSee('Te sobran')
+        ->assertSee('73.00');
+});
+
 it('creates and deletes debt in DebtManagerView using single total amount', function () {
     $user = User::factory()->create();
     $workspace = Workspace::query()->create([
@@ -272,6 +304,158 @@ it('allows editing and deleting accounts in AccountsAndRatesView', function () {
         ->call('deleteAccount', $account->id);
 
     expect(Account::query()->find($account->id))->toBeNull();
+});
+
+it('displays accounts with proper currency and converts non-usd accounts in liquidity calculation', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::query()->create([
+        'owner_id' => $user->id,
+        'name' => 'Personal',
+        'type' => 'personal',
+        'base_currency' => 'USD',
+    ]);
+
+    // Create a VES exchange rate: 50 VES per 1 USD -> multiplier 0.02
+    CurrencyRate::query()->create([
+        'from_currency' => 'VES',
+        'to_currency' => 'USD',
+        'source' => 'bcv',
+        'quote_rate' => '50.00000000',
+        'rate' => '0.020000000000',
+        'effective_on' => now()->toDateString(),
+    ]);
+
+    $account = Account::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Banco de Venezuela',
+        'currency_code' => 'VES',
+        'opening_balance' => '5000.00',
+    ]);
+
+    $this->actingAs($user);
+
+    // Accounts view displays 5,000.00 VES and approximate USD equivalent ($100.00 USD)
+    Livewire::test(AccountsAndRatesView::class)
+        ->assertOk()
+        ->assertSee('Banco de Venezuela')
+        ->assertSee('5,000.00')
+        ->assertSee('VES')
+        ->assertSee('≈ $100.00 USD');
+
+    // Liquidity action converts 5000 VES to 100 USD
+    $action = app(GetLiquidityMetricsAction::class);
+    $period = BudgetPeriod::query()->create([
+        'workspace_id' => $workspace->id,
+        'period_start' => now()->startOfMonth()->toDateString(),
+        'base_currency' => 'USD',
+    ]);
+
+    $metrics = $action->execute($workspace->id, $period->id);
+    expect((float) $metrics->previousPeriodSavings)->toBe(100.0);
+});
+
+it('correctly converts foreign currency accounts when only binance source is available and does not treat VES as USD', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::query()->create([
+        'owner_id' => $user->id,
+        'name' => 'Personal',
+        'type' => 'personal',
+        'base_currency' => 'USD',
+    ]);
+
+    // ONLY Binance rate exists in the DB (1000 VES = 1 USD -> multiplier 0.001)
+    CurrencyRate::query()->create([
+        'from_currency' => 'VES',
+        'to_currency' => 'USD',
+        'source' => 'binance',
+        'quote_rate' => '1000.00000000',
+        'rate' => '0.001000000000',
+        'effective_on' => now()->toDateString(),
+    ]);
+
+    $account = Account::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Banco de Venezuela',
+        'currency_code' => 'VES',
+        'opening_balance' => '500.00',
+    ]);
+
+    expect((float) $account->getBalanceInUsd())->toBe(0.50);
+
+    $action = app(GetLiquidityMetricsAction::class);
+    $period = BudgetPeriod::query()->create([
+        'workspace_id' => $workspace->id,
+        'period_start' => now()->startOfMonth()->toDateString(),
+        'base_currency' => 'USD',
+    ]);
+
+    $metrics = $action->execute($workspace->id, $period->id);
+    expect((float) $metrics->previousPeriodSavings)->toBe(0.50)
+        ->and((float) $metrics->netLiquidity)->toBe(0.50);
+});
+
+it('executes transfers between accounts with live rates and custom rate', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::query()->create([
+        'owner_id' => $user->id,
+        'name' => 'Personal',
+        'type' => 'personal',
+        'base_currency' => 'USD',
+    ]);
+
+    // Create a VES exchange rate: 50 VES per 1 USD
+    CurrencyRate::query()->create([
+        'from_currency' => 'VES',
+        'to_currency' => 'USD',
+        'source' => 'bcv',
+        'quote_rate' => '50.00000000',
+        'rate' => '0.020000000000',
+        'effective_on' => now()->toDateString(),
+    ]);
+
+    $usdAccount = Account::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Binance USD',
+        'currency_code' => 'USD',
+        'opening_balance' => '100.00',
+    ]);
+
+    $vesAccount = Account::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Banco de Venezuela',
+        'currency_code' => 'VES',
+        'opening_balance' => '0.00',
+    ]);
+
+    $this->actingAs($user);
+
+    // 1. Transfer $20 USD to VES using BCV rate (50 Bs/$) -> +1000 VES
+    Livewire::test(AccountsAndRatesView::class)
+        ->assertOk()
+        ->call('openTransferModal')
+        ->set('fromAccountId', $usdAccount->id)
+        ->set('toAccountId', $vesAccount->id)
+        ->set('transferAmount', '20.00')
+        ->set('transferRateSource', 'bcv')
+        ->call('executeTransfer')
+        ->assertHasNoErrors();
+
+    expect((float) $usdAccount->fresh()->opening_balance)->toBe(80.0)
+        ->and((float) $vesAccount->fresh()->opening_balance)->toBe(1000.0);
+
+    // 2. Transfer $10 USD to VES using custom rate (60 Bs/$) -> +600 VES
+    Livewire::test(AccountsAndRatesView::class)
+        ->call('openTransferModal')
+        ->set('fromAccountId', $usdAccount->id)
+        ->set('toAccountId', $vesAccount->id)
+        ->set('transferAmount', '10.00')
+        ->set('transferRateSource', 'custom')
+        ->set('customExchangeRate', '60.00')
+        ->call('executeTransfer')
+        ->assertHasNoErrors();
+
+    expect((float) $usdAccount->fresh()->opening_balance)->toBe(70.0)
+        ->and((float) $vesAccount->fresh()->opening_balance)->toBe(1600.0);
 });
 
 it('creates, edits, and filters recurring expenses in BudgetSheetView', function () {
@@ -434,6 +618,70 @@ it('links budget items to accounts, updates account balance and ledger on paymen
     expect($item->fresh()->status)->toBe('pending')
         ->and((float) $account->fresh()->opening_balance)->toBe(500.0)
         ->and(FinancialTransaction::query()->where('budget_item_id', $item->id)->exists())->toBeFalse();
+});
+
+it('allows selecting exchange rate when budget item is paid from non-usd account and deducts account in local currency', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::query()->create([
+        'owner_id' => $user->id,
+        'name' => 'Personal',
+        'type' => 'personal',
+        'base_currency' => 'USD',
+    ]);
+
+    $period = BudgetPeriod::query()->create([
+        'workspace_id' => $workspace->id,
+        'period_start' => now()->startOfMonth()->toDateString(),
+        'base_currency' => 'USD',
+    ]);
+
+    // 1000 VES = 1 USD (multiplier 0.001)
+    CurrencyRate::query()->create([
+        'from_currency' => 'VES',
+        'to_currency' => 'USD',
+        'source' => 'bcv',
+        'quote_rate' => '1000.00000000',
+        'rate' => '0.001000000000',
+        'effective_on' => now()->toDateString(),
+    ]);
+
+    $vesAccount = Account::query()->create([
+        'workspace_id' => $workspace->id,
+        'name' => 'Banco de Venezuela',
+        'currency_code' => 'VES',
+        'opening_balance' => '5000.00',
+    ]);
+
+    $this->actingAs($user);
+
+    // Creating budget item and selecting VES account shows rate and estimated debit
+    Livewire::test(BudgetSheetView::class)
+        ->assertOk()
+        ->call('openCreateModal')
+        ->set('title', 'Alquiler')
+        ->set('totalAmount', '2.00') // $2.00 USD
+        ->set('accountId', $vesAccount->id)
+        ->assertSee('Tasa de cambio para Banco de Venezuela (VES)')
+        ->assertSee('2,000.00 VES')
+        ->call('saveItem');
+
+    $item = BudgetItem::query()->where('title', 'Alquiler')->first();
+    expect($item)->not->toBeNull()
+        ->and($item->account_id)->toBe($vesAccount->id);
+
+    // Marking as paid deducts 2000.00 VES from account (2 USD * 1000)
+    Livewire::test(BudgetSheetView::class)
+        ->call('toggleStatus', $item->id);
+
+    expect($item->fresh()->status)->toBe('paid')
+        ->and((float) $vesAccount->fresh()->opening_balance)->toBe(3000.0);
+
+    // Unmarking restores the 2000 VES
+    Livewire::test(BudgetSheetView::class)
+        ->call('toggleStatus', $item->id);
+
+    expect($item->fresh()->status)->toBe('pending')
+        ->and((float) $vesAccount->fresh()->opening_balance)->toBe(5000.0);
 });
 
 it('amortizes debt, updates account balance, and records payment history when paying a debt-linked budget item', function () {

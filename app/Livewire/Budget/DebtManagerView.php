@@ -221,13 +221,19 @@ class DebtManagerView extends Component
             $balance = (float) $topDebt->current_balance;
             $minPay = (float) $topDebt->minimum_payment;
 
-            $monthsStandard = $minPay > 0 ? ceil($balance / $minPay) : 0;
-            $monthsAccelerated = ($minPay + $extraAmount) > 0 ? ceil($balance / ($minPay + $extraAmount)) : 0;
+            $isImmediatePayoff = $extraAmount >= $balance && $balance > 0;
+            $surplus = max(0.0, $extraAmount - $balance);
+
+            $monthsStandard = $minPay > 0 ? (int) ceil($balance / $minPay) : 0;
+            $monthsAccelerated = ($minPay + $extraAmount) > 0 ? (int) ceil($balance / ($minPay + $extraAmount)) : 0;
             $monthsSaved = max(0, $monthsStandard - $monthsAccelerated);
 
             $simulationResults = [
                 'targetDebtName' => $topDebt->name,
+                'balance' => $balance,
                 'minPay' => $minPay,
+                'isImmediatePayoff' => $isImmediatePayoff,
+                'surplus' => $surplus,
                 'monthsStandard' => $monthsStandard,
                 'monthsAccelerated' => $monthsAccelerated,
                 'monthsSaved' => $monthsSaved,

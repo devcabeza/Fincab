@@ -19,18 +19,24 @@ class ExchangeRatesBanner extends Component
         $today = Carbon::today()->format('Y-m-d');
 
         // Silent automatic daily sync check (cached for 2 hours)
-        Cache::remember('currency_rates_daily_sync_'.$today, 7200, function () use ($today): bool {
-            $hasTodayRates = CurrencyRate::query()->whereDate('effective_on', $today)->exists();
-            if (! $hasTodayRates) {
-                try {
-                    app(SyncExchangeRatesAction::class)->execute($today);
-                } catch (Throwable) {
-                    // Fail silently and gracefully fall back to latest known rates in database
-                }
-            }
+        if (! app()->runningUnitTests()) {
+            Cache::remember('currency_rates_daily_sync_'.$today, 7200, function () use ($today): bool {
+                $hasCompleteRates = CurrencyRate::query()
+                    ->whereDate('effective_on', $today)
+                    ->where('source', 'bcv')
+                    ->exists();
 
-            return true;
-        });
+                if (! $hasCompleteRates) {
+                    try {
+                        app(SyncExchangeRatesAction::class)->execute($today);
+                    } catch (Throwable) {
+                        // Fail silently and gracefully fall back to latest known rates in database
+                    }
+                }
+
+                return true;
+            });
+        }
 
         $bcv = CurrencyRate::getQuote('VES', 'USD', 'bcv');
         $paralelo = CurrencyRate::getQuote('VES', 'USD', 'paralelo');

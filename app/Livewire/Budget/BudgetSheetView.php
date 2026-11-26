@@ -160,17 +160,7 @@ class BudgetSheetView extends Component
         $this->recalculateFromLocalAmount();
     }
 
-    public function updatedRateSource(string $val): void
-    {
-        $this->recalculateFromLocalAmount();
-    }
-
     public function updatedLocalAmount(string $val): void
-    {
-        $this->recalculateFromLocalAmount();
-    }
-
-    public function updatedManualQuote(string $val): void
     {
         $this->recalculateFromLocalAmount();
     }
@@ -178,7 +168,73 @@ class BudgetSheetView extends Component
     public function selectRateSource(string $source): void
     {
         $this->rateSource = $source;
-        $this->recalculateFromLocalAmount();
+        $this->syncAmountsAfterRateChange();
+    }
+
+    public function updatedRateSource(string $val): void
+    {
+        $this->syncAmountsAfterRateChange();
+    }
+
+    public function updatedManualQuote(string $val): void
+    {
+        $this->syncAmountsAfterRateChange();
+    }
+
+    public function updatedAccountId(?int $val): void
+    {
+        if (! $val || ! $this->selectedWorkspaceId) {
+            $this->currency = 'USD';
+
+            return;
+        }
+
+        /** @var Account|null $account */
+        $account = Account::query()
+            ->where('workspace_id', $this->selectedWorkspaceId)
+            ->find($val);
+
+        if (! $account) {
+            return;
+        }
+
+        if ($account->currency_code !== 'USD') {
+            $this->currency = $account->currency_code;
+            $this->showCurrencyConverter = true;
+
+            if ($this->currency === 'VES' && ! in_array($this->rateSource, ['bcv', 'paralelo', 'binance', 'manual'], true)) {
+                $this->rateSource = 'bcv';
+            } elseif ($this->currency === 'COP' && ! in_array($this->rateSource, ['official', 'binance', 'manual'], true)) {
+                $this->rateSource = 'official';
+            }
+
+            if (! empty($this->totalAmount) && is_numeric($this->totalAmount) && (float) $this->totalAmount > 0) {
+                $rate = $this->getActiveExchangeRate();
+                if ($rate && (float) $rate > 0) {
+                    $this->localAmount = bcmul((string) $this->totalAmount, $this->toNumeric($rate), 2);
+                }
+            }
+        } else {
+            $this->currency = 'USD';
+        }
+    }
+
+    private function syncAmountsAfterRateChange(): void
+    {
+        $rate = $this->getActiveExchangeRate();
+        if (! $rate || (float) $rate <= 0) {
+            return;
+        }
+
+        if (! empty($this->localAmount) && is_numeric($this->localAmount) && (float) $this->localAmount > 0) {
+            $usdTotal = bcdiv((string) $this->localAmount, $this->toNumeric($rate), 2);
+            $this->totalAmount = $usdTotal;
+            if ($this->splitMode === 'equal') {
+                $this->recalculateEqualSplit();
+            }
+        } elseif (! empty($this->totalAmount) && is_numeric($this->totalAmount) && (float) $this->totalAmount > 0) {
+            $this->localAmount = bcmul((string) $this->totalAmount, $this->toNumeric($rate), 2);
+        }
     }
 
     public function getActiveExchangeRate(): ?string
@@ -237,11 +293,31 @@ class BudgetSheetView extends Component
         $this->justification = '';
         $this->showCurrencyConverter = false;
         $this->showAdvancedOptions = $item->debt_id !== null;
+
+        if ($item->account_id) {
+            $account = Account::query()->find($item->account_id);
+            if ($account && $account->currency_code !== 'USD') {
+                $this->currency = $account->currency_code;
+                $this->showCurrencyConverter = true;
+                $rate = $this->getActiveExchangeRate();
+                if ($rate && (float) $rate > 0) {
+                    $this->localAmount = bcmul((string) $this->totalAmount, $this->toNumeric($rate), 2);
+                }
+            }
+        }
+
         $this->showItemModal = true;
     }
 
     public function updatedTotalAmount(string $value): void
     {
+        if ($this->showCurrencyConverter && $this->currency !== 'USD' && is_numeric($value) && (float) $value > 0) {
+            $rate = $this->getActiveExchangeRate();
+            if ($rate && (float) $rate > 0) {
+                $this->localAmount = bcmul($value, $this->toNumeric($rate), 2);
+            }
+        }
+
         if ($this->splitMode === 'equal') {
             $this->recalculateEqualSplit();
         }
@@ -446,6 +522,7 @@ class BudgetSheetView extends Component
             'paraleloQuote' => CurrencyRate::getQuote('VES', 'USD', 'paralelo'),
             'binanceVesQuote' => CurrencyRate::getQuote('VES', 'USD', 'binance'),
             'copQuote' => CurrencyRate::getQuote('COP', 'USD', 'official') ?? CurrencyRate::getQuote('COP', 'USD', 'binance'),
+            'copBinanceQuote' => CurrencyRate::getQuote('COP', 'USD', 'binance'),
         ]);
     }
 

@@ -99,25 +99,39 @@
                         @if (! empty($simulationResults))
                             <div class="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3.5 text-xs space-y-1.5">
                                 <div class="text-zinc-300">
-                                    Deuda prioritaria objetivo: <strong class="text-white">{{ $simulationResults['targetDebtName'] }}</strong>
+                                    Deuda prioritaria objetivo: <strong class="text-white">{{ $simulationResults['targetDebtName'] }}</strong> (Saldo: ${{ number_format((float) $simulationResults['balance'], 2) }})
                                 </div>
-                                @if (($simulationResults['minPay'] ?? 0) > 0)
+                                @if ($simulationResults['isImmediatePayoff'])
+                                    <div class="text-emerald-400 font-semibold pt-1 flex items-start gap-1.5 font-mono">
+                                        <svg class="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                        </svg>
+                                        <div>
+                                            <div>¡Con este abono de ${{ number_format((float) $simulatorExtra, 2) }} liquidas el 100% de esta deuda de inmediato!</div>
+                                            @if ($simulationResults['surplus'] > 0)
+                                                <div class="text-xs text-zinc-400 font-sans font-normal pt-0.5">
+                                                    Te sobran <strong class="text-emerald-300 font-mono">${{ number_format($simulationResults['surplus'], 2) }}</strong> para acelerar tu siguiente objetivo o liquidez.
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @elseif (($simulationResults['minPay'] ?? 0) > 0)
                                     <div class="text-zinc-400 font-mono tabular-nums">
-                                        Pagando solo la cuota normal: <span class="text-zinc-200">{{ $simulationResults['monthsStandard'] }} meses</span> ·
-                                        Con abono acelerado: <strong class="text-emerald-400">{{ $simulationResults['monthsAccelerated'] }} meses</strong>
+                                        Pagando solo la cuota normal: <span class="text-zinc-200">{{ $simulationResults['monthsStandard'] }} {{ $simulationResults['monthsStandard'] === 1 ? 'mes' : 'meses' }}</span> ·
+                                        Con abono acelerado: <strong class="text-emerald-400">{{ $simulationResults['monthsAccelerated'] }} {{ $simulationResults['monthsAccelerated'] === 1 ? 'mes' : 'meses' }}</strong>
                                     </div>
                                     <div class="text-emerald-400 font-semibold pt-1 flex items-center gap-1.5 font-mono tabular-nums">
                                         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                         </svg>
-                                        <span>¡Te ahorras {{ $simulationResults['monthsSaved'] }} meses de pagos en esta deuda!</span>
+                                        <span>¡Te ahorras {{ $simulationResults['monthsSaved'] }} {{ $simulationResults['monthsSaved'] === 1 ? 'mes' : 'meses' }} de pagos en esta deuda!</span>
                                     </div>
                                 @else
                                     <div class="text-emerald-400 font-semibold pt-0.5 flex items-center gap-1.5 font-mono tabular-nums">
                                         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                         </svg>
-                                        <span>Abonando ${{ number_format((float) $simulatorExtra, 2) }}/mes la liquidas en aprox. {{ $simulationResults['monthsAccelerated'] }} meses.</span>
+                                        <span>Abonando ${{ number_format((float) $simulatorExtra, 2) }}/mes la liquidas en aprox. {{ $simulationResults['monthsAccelerated'] }} {{ $simulationResults['monthsAccelerated'] === 1 ? 'mes' : 'meses' }}.</span>
                                     </div>
                                 @endif
                             </div>

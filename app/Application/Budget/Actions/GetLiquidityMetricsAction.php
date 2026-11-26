@@ -10,6 +10,7 @@ use App\Models\BudgetItem;
 use App\Models\BudgetPeriod;
 use App\Models\FinancialTransaction;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 
 final class GetLiquidityMetricsAction
 {
@@ -104,10 +105,18 @@ final class GetLiquidityMetricsAction
 
             $previousPeriodLabel = Carbon::parse($prevPeriod->period_start)->translatedFormat('F Y');
         } else {
-            $accBalance = Account::query()
+            /** @var Collection<int, Account> $accounts */
+            $accounts = Account::query()
                 ->where('workspace_id', $workspaceId)
                 ->where('is_active', true)
-                ->sum('opening_balance');
+                ->get();
+
+            $totalAccBalanceUsd = '0.00000000';
+            foreach ($accounts as $acc) {
+                $totalAccBalanceUsd = bcadd($totalAccBalanceUsd, $this->toNumeric($acc->getBalanceInUsd()), 8);
+            }
+
+            $accBalance = $totalAccBalanceUsd;
 
             if ((float) $accBalance > 0) {
                 $periodItemIds = $period->items->pluck('id')->filter()->all();
