@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Application\Health\Actions\CheckSystemHealthAction;
+use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -38,5 +39,9 @@ Route::middleware(['throttle:api'])->group(function (): void {
                 message: 'Perfil de usuario obtenido con éxito.',
             );
         })->name('api.v1.user');
+
+        Route::post('/sync/push', [SyncController::class, 'push'])->name('api.v1.sync.push');
+        Route::get('/sync/pull', [SyncController::class, 'pull'])->name('api.v1.sync.pull');
+        Route::post('/workspaces/{workspace}/quick-entry', [SyncController::class, 'quickEntry'])->name('api.v1.workspaces.quick-entry');
     });
 });

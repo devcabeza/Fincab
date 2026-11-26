@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ $title ?? 'Laravertex' }}</title>
+        <title>{{ $title ?? 'Fincab — Control Presupuestario y Priorización de Deudas' }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -15,7 +15,7 @@
         <!-- Styles & Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="h-full w-full max-w-full overflow-x-hidden bg-zinc-950 text-zinc-100 antialiased font-sans selection:bg-indigo-500 selection:text-white touch-callout-none">
+    <body class="h-full w-full max-w-full overflow-x-hidden bg-zinc-950 text-zinc-100 antialiased font-sans touch-callout-none">
         <div class="min-h-screen-safe w-full max-w-full overflow-x-hidden flex flex-col justify-between">
             <main class="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
                 {{ $slot ?? '' }}

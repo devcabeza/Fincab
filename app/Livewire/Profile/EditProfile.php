@@ -15,7 +15,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
-#[Title('Mi Perfil | Laravertex')]
+#[Title('Mi Perfil | Fincab')]
 class EditProfile extends Component
 {
     public string $name = '';

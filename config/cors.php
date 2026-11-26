@@ -21,8 +21,6 @@ return [
 
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:5173'),
-        'capacitor://localhost',  // iOS
-        'http://localhost',       // Android
     ],
 
     'allowed_origins_patterns' => [],

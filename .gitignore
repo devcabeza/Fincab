@@ -39,7 +39,8 @@ yarn-error.log
 /opencode.json
 /opencode.jsonc
 
-# Capacitor
-/android/
-/ios/
+# NativePHP Mobile generated projects and web build output
 /dist/
+.playwright-cli/
+.codex/
+.impeccable/

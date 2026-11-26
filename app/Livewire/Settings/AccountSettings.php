@@ -14,7 +14,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
-#[Title('Configuraciones | Laravertex')]
+#[Title('Configuraciones | Fincab')]
 class AccountSettings extends Component
 {
     public function deleteAccount(DeleteAccountAction $deleteAccountAction, Request $request): mixed

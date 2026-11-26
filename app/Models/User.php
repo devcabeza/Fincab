@@ -67,4 +67,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(EloquentMagicLinkToken::class, 'user_id');
     }
+
+    /** @return HasMany<Workspace, $this> */
+    public function workspaces(): HasMany
+    {
+        return $this->hasMany(Workspace::class, 'owner_id');
+    }
 }

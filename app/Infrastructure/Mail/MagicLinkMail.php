@@ -35,7 +35,7 @@ final class MagicLinkMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Tu código de acceso a Laravertex: {$this->tokenCode}",
+            subject: "Tu código de acceso a Fincab: {$this->tokenCode}",
         );
     }
 
