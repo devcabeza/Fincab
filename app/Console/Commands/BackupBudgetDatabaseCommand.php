@@ -34,15 +34,12 @@ class BackupBudgetDatabaseCommand extends Command
 
     public function handle(): int
     {
-        $targetPath = $this->option('path');
+        $targetOption = $this->option('path');
+        $targetPath = is_string($targetOption) && $targetOption !== ''
+            ? $targetOption
+            : storage_path('app/backups/budget_backup_'.now()->format('Y_m_d_His').'.json');
 
-        if ($targetPath === null || $targetPath === '') {
-            $backupDir = storage_path('app/backups');
-            $timestamp = now()->format('Y_m_d_His');
-            $targetPath = "{$backupDir}/budget_backup_{$timestamp}.json";
-        }
-
-        $dir = dirname((string) $targetPath);
+        $dir = dirname($targetPath);
         if (! File::exists($dir)) {
             File::makeDirectory($dir, 0755, true);
         }
@@ -69,7 +66,7 @@ class BackupBudgetDatabaseCommand extends Command
             return self::FAILURE;
         }
 
-        File::put((string) $targetPath, $encoded);
+        File::put($targetPath, $encoded);
 
         $this->info('✓ Respaldo financiero generado exitosamente:');
         $this->line("  Ruta: {$targetPath}");
