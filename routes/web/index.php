@@ -27,4 +27,5 @@ Route::get('/health', function (CheckSystemHealthAction $healthAction) {
 // Feature routes
 require __DIR__.'/auth.php';
 require __DIR__.'/dashboard.php';
+require __DIR__.'/goals.php';
 require __DIR__.'/settings.php';

@@ -41,4 +41,16 @@ class Workspace extends Model
     {
         return $this->hasMany(FinancialTransaction::class);
     }
+
+    /** @return HasMany<Goal, $this> */
+    public function goals(): HasMany
+    {
+        return $this->hasMany(Goal::class);
+    }
+
+    /** @return HasMany<GoalContribution, $this> */
+    public function goalContributions(): HasMany
+    {
+        return $this->hasMany(GoalContribution::class);
+    }
 }

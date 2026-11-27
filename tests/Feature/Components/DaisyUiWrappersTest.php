@@ -302,3 +302,13 @@ test('collapse component renders details with summary and collapse classes', fun
         ->toContain('¿Cómo funciona?')
         ->toContain('Explicación del contenido');
 });
+
+test('progress component renders with value and variant', function () {
+    $html = Blade::render('<x-progress value="50" max="100" variant="success" />');
+
+    expect($html)
+        ->toContain('<progress')
+        ->toContain('progress-success')
+        ->toContain('value="50"')
+        ->toContain('max="100"');
+});
