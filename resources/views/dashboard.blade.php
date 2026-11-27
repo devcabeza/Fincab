@@ -91,6 +91,9 @@
                     <x-button href="{{ route('budget.accounts') }}" variant="neutral" size="sm" class="bg-zinc-800 text-white hover:bg-zinc-700 min-h-[44px]">
                         <span>Cuentas y Tasas</span>
                     </x-button>
+                    <x-button href="{{ route('goals.index') }}" variant="neutral" size="sm" class="bg-zinc-800 text-white hover:bg-zinc-700 min-h-[44px]">
+                        <span>Metas y Objetivos</span>
+                    </x-button>
                 </div>
             </div>
         </div>

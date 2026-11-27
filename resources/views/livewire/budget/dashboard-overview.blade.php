@@ -81,6 +81,7 @@
                 <a href="{{ route('budget.sheet') }}" class="py-2.5 text-zinc-400 hover:text-white transition-colors whitespace-nowrap">Hoja Presupuestaria</a>
                 <a href="{{ route('budget.debts') }}" class="py-2.5 text-zinc-400 hover:text-white transition-colors whitespace-nowrap">Centro de Deudas</a>
                 <a href="{{ route('budget.accounts') }}" class="py-2.5 text-zinc-400 hover:text-white transition-colors whitespace-nowrap">Cuentas y Tasas</a>
+                <a href="{{ route('goals.index') }}" class="py-2.5 text-zinc-400 hover:text-white transition-colors whitespace-nowrap">Metas y Objetivos</a>
             </div>
 
             <div class="pb-2 md:pb-0">
